@@ -18,6 +18,7 @@ class PuppeteerService {
         if (!this.browser) {
             this.browser = await puppeteer.launch({
                 headless: 'new',
+                executablePath: process.env.CHROME_BIN || '/usr/bin/google-chrome',
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -26,7 +27,12 @@ class PuppeteerService {
                     '--ignore-certifcate-errors',
                     '--ignore-certifcate-errors-spki-list',
                     '--disable-accelerated-2d-canvas',
-                    '--disable-gpu'
+                    '--disable-gpu',
+                    '--disable-dev-shm-usage',
+                    '--disable-extensions',
+                    '--disable-web-security',
+                    '--no-first-run',
+                    '--no-zygote'
                 ]
             });
         }
