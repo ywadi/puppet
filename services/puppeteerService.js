@@ -14,6 +14,12 @@ class PuppeteerService {
         return this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
     }
 
+    async delay(time) {
+        return new Promise(function(resolve) {
+            setTimeout(resolve, time);
+        });
+    }
+
     async initBrowser() {
         if (!this.browser) {
             this.browser = await puppeteer.launch({
@@ -114,6 +120,9 @@ class PuppeteerService {
                 timeout: 30000
             });
             
+            // Add random delay to simulate human behavior
+            await this.delay(Math.random() * 1000 + 1000);
+
             if (options.width && options.height) {
                 await page.setViewport({
                     width: parseInt(options.width),
@@ -121,9 +130,6 @@ class PuppeteerService {
                     deviceScaleFactor: 1,
                 });
             }
-
-            // Add random delay to simulate human behavior
-            await page.waitForTimeout(Math.random() * 1000 + 1000);
 
             const screenshot = await page.screenshot({
                 fullPage: options.fullPage === 'true',
@@ -145,7 +151,7 @@ class PuppeteerService {
             });
             
             // Add random delay to simulate human behavior
-            await page.waitForTimeout(Math.random() * 1000 + 1000);
+            await this.delay(Math.random() * 1000 + 1000);
 
             const pdf = await page.pdf({
                 format: options.format || 'A4',
@@ -168,41 +174,47 @@ class PuppeteerService {
     async getPageContent(url, selector) {
         const page = await this.getPage();
         try {
-            // Navigate to the page and wait for network to be idle
             await page.goto(url, { 
                 waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
                 timeout: 30000
             });
             
             // Add random delay to simulate human behavior
-            await page.waitForTimeout(Math.random() * 1000 + 1000);
+            await this.delay(Math.random() * 1000 + 1000);
 
             // Wait for the body to ensure DOM is fully loaded
             await page.waitForSelector('body');
 
             // Additional wait for dynamic content
-            await page.waitForFunction(() => {
-                // Check if there are any pending XHR requests
-                const anyPendingXHR = window.performance
-                    .getEntriesByType('resource')
-                    .some(r => r.initiatorType === 'xmlhttprequest' && !r.responseEnd);
-                
-                // Check if there are any pending network connections
-                const anyPendingFetch = window.fetch && window.performance
-                    .getEntriesByType('resource')
-                    .some(r => r.initiatorType === 'fetch' && !r.responseEnd);
+            await page.evaluate(() => {
+                return new Promise((resolve) => {
+                    let checkReady = () => {
+                        // Check if there are any pending XHR requests
+                        const anyPendingXHR = window.performance
+                            .getEntriesByType('resource')
+                            .some(r => r.initiatorType === 'xmlhttprequest' && !r.responseEnd);
+                        
+                        // Check if there are any pending network connections
+                        const anyPendingFetch = window.fetch && window.performance
+                            .getEntriesByType('resource')
+                            .some(r => r.initiatorType === 'fetch' && !r.responseEnd);
 
-                // Check if any animations are running
-                const anyRunningAnimations = document.getAnimations().some(a => a.playState === 'running');
+                        // Check if any animations are running
+                        const anyRunningAnimations = document.getAnimations().some(a => a.playState === 'running');
 
-                return !anyPendingXHR && !anyPendingFetch && !anyRunningAnimations;
-            }, { timeout: 5000 }).catch(() => {
-                // Continue even if timeout occurs, as some sites might have continuous animations
+                        if (!anyPendingXHR && !anyPendingFetch && !anyRunningAnimations) {
+                            resolve();
+                        } else {
+                            setTimeout(checkReady, 100);
+                        }
+                    };
+                    checkReady();
+                });
+            }).catch(() => {
                 console.log('Timeout waiting for all dynamic content, proceeding anyway');
             });
 
             if (selector) {
-                // Wait for specific selector if provided
                 await page.waitForSelector(selector, { timeout: 5000 });
                 const element = await page.$(selector);
                 if (!element) {
@@ -211,17 +223,12 @@ class PuppeteerService {
                 return await page.$eval(selector, el => el.innerHTML);
             }
             
-            // Get the fully rendered HTML
             const content = await page.evaluate(() => {
-                // Clone the document to avoid modifying the original
                 const clone = document.documentElement.cloneNode(true);
-                
-                // Remove all script tags to avoid re-execution
                 const scripts = clone.getElementsByTagName('script');
                 while (scripts.length > 0) {
                     scripts[0].parentNode.removeChild(scripts[0]);
                 }
-                
                 return clone.outerHTML;
             });
             
@@ -240,7 +247,7 @@ class PuppeteerService {
             });
 
             // Add random delay to simulate human behavior
-            await page.waitForTimeout(Math.random() * 1000 + 1000);
+            await this.delay(Math.random() * 1000 + 1000);
 
             return await page.evaluate(script);
         } finally {
@@ -257,7 +264,7 @@ class PuppeteerService {
             });
 
             // Add random delay to simulate human behavior
-            await page.waitForTimeout(Math.random() * 1000 + 1000);
+            await this.delay(Math.random() * 1000 + 1000);
 
             const metrics = await page.metrics();
             const performance = await page.evaluate(() => performance.toJSON());
@@ -280,7 +287,7 @@ class PuppeteerService {
             });
 
             // Add random delay to simulate human behavior
-            await page.waitForTimeout(Math.random() * 1000 + 1000);
+            await this.delay(Math.random() * 1000 + 1000);
 
             // Wait for body to ensure DOM is loaded
             await page.waitForSelector('body');
