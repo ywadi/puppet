@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  puppeteer-api:
+    build: .
+    container_name: puppeteer-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # Mount for persistent storage of downloaded files
+      - ./downloads:/home/pptruser/Downloads
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    restart: unless-stopped
+    # Additional security options for Chrome
+    security_opt:
+      - no-new-privileges:true
+    # Required for Chrome
+    cap_add:
+      - SYS_ADMIN
+    # Temporary storage for Chrome
+    tmpfs:
+      - /tmp
